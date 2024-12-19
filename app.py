@@ -3,24 +3,38 @@ from flask_cors import CORS
 import os
 import datetime
 from dotenv import load_dotenv
-from routes import api  # Import the api blueprint
+from models.models import User, Deck, Card, Game, Entry, DeckCard
+from typing import Optional, List
+from database import data_manager  # Update this import
+from routes.api_routes import api  # This is the correct way to import the Blueprint
 
 load_dotenv()  # Load environment variables from .env file
 
+# 1. Create the Flask app
 app = Flask(__name__)
+
 CORS(app)  
 
-# Register the blueprint without the /api/v1 prefix
-app.register_blueprint(api)
-
-# Configuration
+# 2. Configure the app
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') 
     DEBUG =  os.environ.get('DEBUG') 
 
 app.config.from_object(Config)
 
-# Routes
+# 3. Set up your data management
+DATA_DIR = 'data'
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
+
+# Define your CSV file paths
+ITEMS_CSV = os.path.join(DATA_DIR, 'items.csv')
+
+# Initialize empty CSV if it doesn't exist
+if not os.path.exists(ITEMS_CSV):
+    pd.DataFrame(columns=['id', 'name']).to_csv(ITEMS_CSV, index=False)
+
+# 4. Define your routes
 @app.route('/')
 def home():
     return jsonify({
@@ -34,29 +48,28 @@ def home():
 # Example CRUD endpoints
 @app.route('/api/items', methods=['GET']) # this is what is called. 
 def get_items():
-    # Example response
-    items = [
-        {"id": 1, "name": "Item 1"},
-        {"id": 2, "name": "Item 2"}
-    ]
-    return jsonify(items)
+    df = pd.read_csv(ITEMS_CSV)
+    return jsonify(df.to_dict('records'))
 
 @app.route('/api/items', methods=['POST'])
 def create_item():
     data = request.get_json()
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
+    df = pd.read_csv(ITEMS_CSV)
     
-    # Process the data here
-    return jsonify({
-        "message": "Item created",
-        "data": data
-    }), 200
+    # Create new item with auto-incrementing ID
+    new_id = 1 if df.empty else df['id'].max() + 1
+    new_item = {'id': new_id, 'name': data.get('name')}
+    
+    df = pd.concat([df, pd.DataFrame([new_item])], ignore_index=True)
+    df.to_csv(ITEMS_CSV, index=False)
+    
+    return jsonify(new_item), 201
 
 @app.route('/api/items/<int:item_id>', methods=['GET']) #api/items/1
 def get_item(item_id):
-    # Example response
-    return jsonify({"id": item_id, "name": f"Item {item_id}"})
+    df = pd.read_csv(ITEMS_CSV)
+    item = df[df['id'] == item_id].to_dict('records')
+    return jsonify(item[0]) if item else ('Item not found', 404)
 
 # Error handlers
 @app.errorhandler(404)
@@ -80,5 +93,20 @@ def bad_request_error(error):
         "status_code": 400
     }), 400
 
+# Example route using the new models
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    data = request.get_json()
+    user = User(
+        name=data.get('name'),
+        email=data.get('email')
+    )
+    created_user = data_manager.create_user(user)
+    return jsonify(created_user.__dict__), 201
+
+# 5. Import and register blueprints (after all app configuration is done)
+app.register_blueprint(api)
+
+# 6. Run the app (only if this file is run directly)
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=7777, debug=True)

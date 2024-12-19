@@ -1,6 +1,8 @@
 venv/
 env/
 ENV/
+dixit cards/
+data/
 
 # Python
 __pycache__/
