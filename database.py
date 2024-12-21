@@ -37,26 +37,29 @@ class DataManager:
     
     def _initialize_cards_from_assets(self):
         """Initialize cards.csv with all Dixit cards from assets directory"""
+        print("Initializing cards from assets...")
         cards_df = pd.read_csv(self.files['cards'])
         
         # Get all JPEG files from assets/dixit_cards
         card_files = glob.glob('assets/dixit cards/*.jpeg')
-        
+        print(f"Found {len(card_files)} card files")
         
         new_cards = []
         for card_path in card_files:
-            # Extract name from filename (remove path and extension)
-            name = os.path.splitext(os.path.basename(card_path))[0]
+            # Get just the filename (e.g., "prison.jpeg")
+            filename = os.path.basename(card_path)
+            name = os.path.splitext(filename)[0]
             
-            # Create new card entry
+            # Create the API URL path instead of filesystem path
+            api_path = f"http://localhost:7777/api/cards/{filename}"
+            
             card_dict = {
                 'id': str(uuid.uuid4()),
-                'image_path': card_path,
+                'image_path': api_path,  # This will now be like "http://localhost:7777/api/cards/prison.jpeg"
                 'name': name
             }
             new_cards.append(card_dict)
         
-        # Add new cards to DataFrame
         if new_cards:
             cards_df = pd.concat([cards_df, pd.DataFrame(new_cards)], ignore_index=True)
             cards_df.to_csv(self.files['cards'], index=False)

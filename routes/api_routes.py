@@ -5,6 +5,7 @@ from pathlib import Path
 from models.models import Entry
 from database import data_manager  # We'll create this instance in app.py
 import uuid
+import pandas as pd
 
 # Create the blueprint here instead
 api = Blueprint('api', __name__, url_prefix='/api')
@@ -62,17 +63,8 @@ def serve_card(filename):
 
 @api.route('/cards')
 def get_card_urls():
-    """Get list of all card URLs"""
-    cards_directory = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'dixit cards')
-    cards = []
-    
-    # Get all image files from the directory
-    valid_extensions = {'.jpg', '.jpeg', '.png'}
-    for file in os.listdir(cards_directory):
-        if os.path.splitext(file)[1].lower() in valid_extensions:
-            # Create the URL for each card
-            card_url = f"/api/cards/{file}"
-            cards.append(card_url)
-    
-    return jsonify(cards)
+    """Get list of all cards with their complete information"""
+    cards_df = pd.read_csv(data_manager.files['cards'])
+    cards_list = cards_df.to_dict('records')
+    return jsonify(cards_list)
 
