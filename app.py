@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
+import pandas as pd
 import datetime
 from dotenv import load_dotenv
 from models.models import User, Deck, Card, Game, Entry, DeckCard
@@ -26,13 +27,6 @@ app.config.from_object(Config)
 DATA_DIR = 'data'
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
-
-# Define your CSV file paths
-ITEMS_CSV = os.path.join(DATA_DIR, 'items.csv')
-
-# Initialize empty CSV if it doesn't exist
-if not os.path.exists(ITEMS_CSV):
-    pd.DataFrame(columns=['id', 'name']).to_csv(ITEMS_CSV, index=False)
 
 # 4. Define your routes
 @app.route('/')

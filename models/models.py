@@ -33,6 +33,7 @@ class Card:
     """Individual card - can belong to multiple decks through DeckCard"""
     id: str = str(uuid.uuid4())
     image_path: str = ""
+    name: str = ""
     # Referenced by:
     # - Entry.card_id
     # - DeckCard.card_id

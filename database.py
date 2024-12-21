@@ -3,6 +3,8 @@ import os
 import pandas as pd
 import datetime
 from typing import List
+import glob
+import uuid
 
 
 class DataManager:
@@ -25,6 +27,39 @@ class DataManager:
                 'id', 'user_id', 'game_id', 'card_id', 
                 'entry_text', 'created_at'
             ]).to_csv(self.files['entries'], index=False)
+        
+        if not os.path.exists(self.files['cards']):
+            pd.DataFrame(columns=[
+                'id', 'image_path', 'name'
+            ]).to_csv(self.files['cards'], index=False)
+            # Initialize cards from assets
+            self._initialize_cards_from_assets()
+    
+    def _initialize_cards_from_assets(self):
+        """Initialize cards.csv with all Dixit cards from assets directory"""
+        cards_df = pd.read_csv(self.files['cards'])
+        
+        # Get all JPEG files from assets/dixit_cards
+        card_files = glob.glob('assets/dixit cards/*.jpeg')
+        
+        
+        new_cards = []
+        for card_path in card_files:
+            # Extract name from filename (remove path and extension)
+            name = os.path.splitext(os.path.basename(card_path))[0]
+            
+            # Create new card entry
+            card_dict = {
+                'id': str(uuid.uuid4()),
+                'image_path': card_path,
+                'name': name
+            }
+            new_cards.append(card_dict)
+        
+        # Add new cards to DataFrame
+        if new_cards:
+            cards_df = pd.concat([cards_df, pd.DataFrame(new_cards)], ignore_index=True)
+            cards_df.to_csv(self.files['cards'], index=False)
     
     def save_entry(self, entry: Entry) -> Entry:
         """Save a new entry to the entries.csv file"""

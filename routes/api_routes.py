@@ -33,19 +33,19 @@ def create_user_entry():
     if user_input is None or user_input == "":
         return jsonify({"message": "bloop: no data provided"}), 400
     
-    # Create new Entry object
-    # Note: You'll need to get these IDs from the request or session in real use
-    # new_entry = Entry(
-    #     id=str(uuid.uuid4()),
-    #     user_id=data.get('user_id'),  # You'll need to send this from frontend
-    #     game_id=data.get('game_id'),  # You'll need to send this from frontend
-    #     card_id=data.get('card_id'),  # You'll need to send this from frontend
-    #     entry_text=user_input,
-    #     created_at=datetime.datetime.now()
-    # )
+    #Create new Entry object
+    #Note: You'll need to get these IDs from the request or session in real use
+    new_entry = Entry(
+        id=str(uuid.uuid4()),
+        user_id=data.get('user_id'),  # You'll need to send this from frontend
+        game_id=data.get('game_id'),  # You'll need to send this from frontend
+        card_id=data.get('card_id'),  # You'll need to send this from frontend
+        entry_text=user_input,
+        created_at=datetime.datetime.now()
+    )
     
-    # Save entry using DataManager
-    # data_manager.save_entry(new_entry)
+    #Save entry using DataManager
+    data_manager.save_entry(new_entry)
     
     response = {
         "message": "Entry saved: " + user_input,
