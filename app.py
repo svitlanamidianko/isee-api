@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 import pandas as pd
@@ -124,9 +124,58 @@ def get_collective_view(game_id):
         print(f"Error: {str(e)}")  # Add this line for debugging
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/clear-entries', methods=['POST'])
+def clear_entries():
+    try:
+        # Read the existing CSV to get the column names
+        df = pd.read_csv('data/entries.csv')
+        # Create an empty DataFrame with the same columns
+        empty_df = pd.DataFrame(columns=df.columns)
+        # Save the empty DataFrame back to CSV
+        empty_df.to_csv('data/entries.csv', index=False)
+        return jsonify({"message": "Entries cleared successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Add this route for serving images
+@app.route('/api/cards/<path:filename>')
+def serve_image(filename):
+    try:
+        return send_from_directory('assets/dixit cards', filename)
+    except Exception as e:
+        print(f"Error serving image: {str(e)}")
+        return jsonify({'error': 'Image not found'}), 404
+
 # Then register the blueprint
 app.register_blueprint(api)
 
+@app.route('/debug/files')
+def debug_files():
+    try:
+        import os
+        cards_dir = 'assets/dixit cards'
+        root_contents = os.listdir('.')
+        assets_contents = os.listdir('assets') if os.path.exists('assets') else []
+        
+        cards_contents = []
+        if os.path.exists(cards_dir):
+            cards_contents = os.listdir(cards_dir)
+        
+        return jsonify({
+            'current_dir': os.getcwd(),
+            'root_contents': root_contents,
+            'assets_contents': assets_contents,
+            'cards_dir_exists': os.path.exists(cards_dir),
+            'cards_contents': cards_contents
+        })
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'current_dir': os.getcwd(),
+            'root_exists': os.path.exists('.')
+        }), 500
+
 # 6. Run the app (only if this file is run directly)
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=7777, debug=True)
+    port = int(os.environ.get('PORT', 7777))  # Changed default port to 7777 for local development
+    app.run(host='0.0.0.0', port=port)
