@@ -152,4 +152,69 @@ class GoogleSheetsManager:
             
         except HttpError as err:
             print(f"Error updating IDs: {err}")
-            raise 
+            raise
+
+    def update_media_paths(self, sheet_name: str = 'media') -> bool:
+        """Update media paths to match the correct format and actual filenames"""
+        try:
+            # Read current data
+            service = build('sheets', 'v4', credentials=self.creds)
+            sheet = service.spreadsheets()
+            result = sheet.values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f'{sheet_name}!A1:Z'
+            ).execute()
+            
+            values = result.get('values', [])
+            if not values:
+                return True
+                
+            headers = values[0]
+            # Find media_path column index
+            path_col_idx = headers.index('media_path')
+            
+            # Find rows that need path updates
+            updates = []
+            for row_idx, row in enumerate(values[1:], start=2):  # Start from 2 to account for header
+                if len(row) <= path_col_idx:
+                    continue
+                    
+                current_path = row[path_col_idx]
+                
+                # Extract just the filename if it's a full path
+                filename = os.path.basename(current_path)
+                
+                # Clean up the filename (remove any spaces, special characters)
+                clean_filename = filename.replace(' ', '_').lower()
+                
+                if current_path != clean_filename:
+                    updates.append({
+                        'range': f'{sheet_name}!{chr(65 + path_col_idx)}{row_idx}',  # Convert column index to letter
+                        'values': [[clean_filename]]
+                    })
+            
+            if updates:
+                body = {
+                    'valueInputOption': 'RAW',
+                    'data': updates
+                }
+                
+                result = sheet.values().batchUpdate(
+                    spreadsheetId=self.spreadsheet_id,
+                    body=body
+                ).execute()
+                
+                print(f"Updated {len(updates)} media paths")
+                
+            return True
+            
+        except HttpError as err:
+            print(f"Error updating media paths: {err}")
+            raise
+
+    def normalize_filename(self, filename: str) -> str:
+        """Helper function to normalize filenames for consistency"""
+        # Remove any directory path if present
+        basename = os.path.basename(filename)
+        # Convert to lowercase and replace spaces with underscores
+        return basename.replace(' ', '_').lower() 

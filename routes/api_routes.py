@@ -4,19 +4,15 @@ import os
 from pathlib import Path
 from models.models import Entry
 from database import data_manager  # We'll create this instance in app.py
+from database.sheets_manager import GoogleSheetsManager
 import uuid
 import pandas as pd
 
 # Create the blueprint here instead
 api = Blueprint('api', __name__, url_prefix='/api')
 
-@api.route('/test', methods=['GET'])
-def test():
-    return jsonify({
-        "message": "Test route working helooo",
-        "service": "API Routes Module",
-        "timestamp": datetime.datetime.now().isoformat()
-    }) 
+# Initialize sheets manager
+sheets_manager = GoogleSheetsManager()
 
 @api.route('/createuserentry', methods=['POST'])
 def create_user_entry():
@@ -30,8 +26,6 @@ def create_user_entry():
     #Note: You'll need to get these IDs from the request or session in real use
     new_entry = Entry(
         id=str(uuid.uuid4()),
-        user_id=data.get('user_id'),  # You'll need to send this from frontend
-        game_id=data.get('game_id'),  # You'll need to send this from frontend
         card_id=data.get('card_id'),  # You'll need to send this from frontend
         entry_text=user_input,
         created_at=datetime.datetime.now()
@@ -47,16 +41,83 @@ def create_user_entry():
     }
     return jsonify(response), 201
 
+
+
 @api.route('/cards/<path:filename>')
 def serve_card(filename):
     """Serve individual card images"""
-    cards_directory = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'dixit cards')
-    return send_file(os.path.join(cards_directory, filename))
+    cards_directory = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'birthday_cards')
+    full_path = os.path.join(cards_directory, filename)
+    print(f"Attempting to serve file: {full_path}")
+    print(f"File exists: {os.path.exists(full_path)}")
+    print(f"Directory contents: {os.listdir(cards_directory)}")
+    
+    try:
+        if os.path.exists(full_path):
+            return send_file(full_path)
+        else:
+            print(f"File not found: {full_path}")
+            return jsonify({'error': 'Image not found'}), 404
+    except Exception as e:
+        print(f"Error serving image: {e}")
+        return jsonify({'error': 'Image not found'}), 404
+
+
 
 @api.route('/cards')
 def get_card_urls():
     """Get list of all cards with their complete information"""
-    cards_df = pd.read_csv(data_manager.files['cards'])
-    cards_list = cards_df.to_dict('records')
-    return jsonify(cards_list)
+    try:
+        # Get cards from Google Sheets
+        cards_list = sheets_manager.read_sheet('media!A1:F')
+        
+        # Add the full URL path for each card
+        for card in cards_list:
+            if 'media_path' in card:
+                card['url'] = f"/api/cards/{card['media_path']}"
+        
+        return jsonify(cards_list)
+    except Exception as e:
+        print(f"Error getting cards: {e}")
+        return jsonify({'error': 'Could not fetch cards'}), 500
+
+
+
+@api.route('/collective-view')
+def get_collective_view():
+    """Get cards with their associated entries"""
+    try:
+        # Get data from Google Sheets
+        entries = sheets_manager.read_sheet('entries!A1:C')
+        cards = sheets_manager.read_sheet('media!A1:F')
+        
+        # Convert entries to DataFrame if we have any
+        entries_df = pd.DataFrame(entries) if entries else pd.DataFrame()
+        
+        # Create response with all cards
+        cards_data = []
+        for card in cards:
+            # For each card, find its entries if any exist
+            card_entries = []
+            if not entries_df.empty:
+                card_entries = entries_df[entries_df['media_id'] == card['id']]
+                card_entries = [{'entry_text': row['entry_text']} for _, row in card_entries.iterrows()]
+            
+            cards_data.append({
+                'card_id': card['id'],
+                'card_url': f"/api/cards/{card['media_path']}",
+                'card_name': card['media_name'],
+                'text': card.get('text', ''),  # Include card text if it exists
+                'linkie': card.get('linkie', ''),  # Include link if it exists
+                'order': card.get('order', ''),  # Include order if it exists
+                'entries': card_entries
+            })
+        
+        # Sort by order if it exists
+        cards_data.sort(key=lambda x: int(x['order']) if x['order'] else float('inf'))
+        
+        return jsonify({'cards': cards_data})
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 

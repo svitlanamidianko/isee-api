@@ -4,6 +4,7 @@ ENV/
 dixit cards/
 data/
 credentials.json
+assets/
 
 # Python
 __pycache__/

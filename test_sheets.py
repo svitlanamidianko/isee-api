@@ -36,6 +36,24 @@ def test_update_ids():
     except Exception as e:
         print(f"Error updating IDs: {e}")
 
+def test_update_paths():
+    print("\nTesting updating media paths...")
+    sheets_manager = GoogleSheetsManager()
+    try:
+        print("Updating paths in 'media' sheet...")
+        sheets_manager.update_media_paths('media')
+        print("\nPath updates completed!")
+        
+        # Read and show updated data
+        data = sheets_manager.read_sheet('media!A1:F')
+        print("\nUpdated paths:")
+        for row in data:
+            if 'media_path' in row:
+                print(f"- {row['media_path']}")
+    except Exception as e:
+        print(f"Error updating paths: {e}")
+
 if __name__ == "__main__":
     test_read_media()
-    test_update_ids() 
+    test_update_ids()
+    test_update_paths() 
