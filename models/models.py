@@ -10,6 +10,7 @@ class Media:
     text: str = ""
     linkie: str = ""
     order: int = 0  # Position in the sequence, default to 0
+    is_horizontal: bool = 0 
 
 
 @dataclass

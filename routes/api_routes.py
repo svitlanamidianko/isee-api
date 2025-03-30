@@ -89,7 +89,7 @@ def get_collective_view():
     try:
         # Get data from Google Sheets
         entries = sheets_manager.read_sheet('entries!A1:C')
-        cards = sheets_manager.read_sheet('media!A1:F')
+        cards = sheets_manager.read_sheet('media!A1:G')  # Extended to include column G for is_horizontal
         
         # Convert entries to DataFrame if we have any
         entries_df = pd.DataFrame(entries) if entries else pd.DataFrame()
@@ -103,6 +103,15 @@ def get_collective_view():
                 card_entries = entries_df[entries_df['media_id'] == card['id']]
                 card_entries = [{'entry_text': row['entry_text']} for _, row in card_entries.iterrows()]
             
+            # Convert is_horizontal to boolean - handle both string and integer values
+            is_horizontal = card.get('is_horizontal', False)
+            if isinstance(is_horizontal, str):
+                is_horizontal = is_horizontal.lower() in ['1', 'true', 'yes']
+            elif isinstance(is_horizontal, (int, float)):
+                is_horizontal = bool(int(is_horizontal))
+            else:
+                is_horizontal = bool(is_horizontal)
+            
             cards_data.append({
                 'card_id': card['id'],
                 'card_url': f"/api/cards/{card['media_path']}",
@@ -110,6 +119,7 @@ def get_collective_view():
                 'text': card.get('text', ''),  # Include card text if it exists
                 'linkie': card.get('linkie', ''),  # Include link if it exists
                 'order': card.get('order', ''),  # Include order if it exists
+                'is_horizontal': is_horizontal,  # Now properly converted to boolean
                 'entries': card_entries
             })
         
