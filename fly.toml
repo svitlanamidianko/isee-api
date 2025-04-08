@@ -1,0 +1,34 @@
+app = "isee-api"
+primary_region = "sfo"  # San Francisco region
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  FLASK_ENV = "production"
+  PORT = "5000"
+
+[http_service]
+  internal_port = 5000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024
+
+# Staging environment configuration
+[deploy]
+  strategy = "rolling"
+
+[deploy.staging]
+  region = "sjc"  # San Jose, close to SF but different region
+  env = { FLASK_ENV = "staging" }
+
+[deploy.production]
+  region = "sfo"  # San Francisco
+  env = { FLASK_ENV = "production" } 

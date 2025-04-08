@@ -5,8 +5,13 @@ from googleapiclient.errors import HttpError
 import os
 from typing import List, Dict, Any, Optional
 import uuid
+from dotenv import load_dotenv
+import json
+import logging
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+
+logger = logging.getLogger(__name__)
 
 class GoogleSheetsManager:
     def __init__(self):
@@ -17,13 +22,34 @@ class GoogleSheetsManager:
     def setup_credentials(self):
         """Set up Google Sheets credentials"""
         try:
-            # If using service account (recommended for server applications)
-            self.creds = service_account.Credentials.from_service_account_file(
-                'credentials.json',
-                scopes=SCOPES
-            )
+            # First try environment variable
+            creds_json = os.getenv('GOOGLE_CREDENTIALS')
+            if creds_json:
+                logger.info("Using credentials from environment variable")
+                try:
+                    # If it's a string, try to parse it as JSON
+                    creds_dict = json.loads(creds_json)
+                    self.creds = service_account.Credentials.from_service_account_info(
+                        creds_dict,
+                        scopes=SCOPES
+                    )
+                    return
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse GOOGLE_CREDENTIALS as JSON: {e}")
+                    raise
+
+            # Fallback to file if environment variable not found
+            logger.info("Falling back to credentials.json file")
+            if os.path.exists('credentials.json'):
+                self.creds = service_account.Credentials.from_service_account_file(
+                    'credentials.json',
+                    scopes=SCOPES
+                )
+            else:
+                raise FileNotFoundError("No credentials found in environment or credentials.json")
+                
         except Exception as e:
-            print(f"Error setting up credentials: {e}")
+            logger.error(f"Error setting up credentials: {e}")
             raise
 
     def read_sheet(self, range_name: str) -> List[Dict[str, Any]]:
@@ -217,4 +243,39 @@ class GoogleSheetsManager:
         # Remove any directory path if present
         basename = os.path.basename(filename)
         # Convert to lowercase and replace spaces with underscores
-        return basename.replace(' ', '_').lower() 
+        return basename.replace(' ', '_').lower()
+
+    def update_sheet_ids(self, sheet_name: str) -> bool:
+        """Command-line interface for updating missing IDs in a sheet"""
+        try:
+            print(f"Updating missing IDs in {sheet_name} sheet...")
+            success = self.update_missing_ids(sheet_name)
+            
+            if success:
+                print("Successfully updated missing IDs!")
+            else:
+                print("Failed to update IDs. Check the logs for details.")
+            
+            return success
+            
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
+            return False
+
+def main():
+    """Command-line entry point for updating sheet IDs"""
+    # Load environment variables
+    load_dotenv()
+    
+    try:
+        # Initialize the sheets manager
+        manager = GoogleSheetsManager()
+        
+        # Update missing IDs in the media sheet
+        manager.update_sheet_ids('media')
+            
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+
+if __name__ == "__main__":
+    main() 
