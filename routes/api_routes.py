@@ -56,10 +56,7 @@ def serve_card(filename):
     """Serve individual card images"""
     cards_directory = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'birthday_cards')
     full_path = os.path.join(cards_directory, filename)
-    print(f"Attempting to serve file: {full_path}")
-    print(f"File exists: {os.path.exists(full_path)}")
-    print(f"Directory contents: {os.listdir(cards_directory)}")
-    
+
     try:
         if os.path.exists(full_path):
             return send_file(full_path)
